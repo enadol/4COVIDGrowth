@@ -7,9 +7,7 @@ library(dplyr)
 library(rlist)
 library(shinythemes)
 
-#No scientific notation
-options(scipen= 999)
-options(digits= 3)
+
 
 #Load Data
 confirmed <- read.csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv", check.names = FALSE)
@@ -33,6 +31,8 @@ netherlandsin <- filter(confirmed, `Country/Region` == "Netherlands")
 ukin <- filter(confirmed, `Country/Region` == "United Kingdom")
 
 days <- colnames(confirmed[1,][5:ncol(confirmed)])
+fechas <- as.Date(days, format = "%m/%d/%y")
+
 
 franceDin <- filter(deaths, `Country/Region` == "France")
 chinaDin <- filter(deaths, `Country/Region` == "China")
@@ -40,29 +40,6 @@ australiaDin <- filter(deaths, `Country/Region` == "Australia")
 canadaDin <- filter(deaths, `Country/Region` == "Canada")
 netherlandsDin <- filter(deaths, `Country/Region` == "Netherlands")
 ukDin <- filter(deaths, `Country/Region` == "United Kingdom")
-
-deathsAllFrance <- computeDeathswProvince("France", fechas[1], fechas[length(fechas)])
-deathsAllChina <- computeDeathswProvince("China", fechas[1], fechas[length(fechas)])
-deathsAllAustralia <- computeDeathswProvince("Australia", fechas[1], fechas[length(fechas)])
-deathsAllCanada <- computeDeathswProvince("Canada", fechas[1], fechas[length(fechas)])
-deathsAllNetherlands <- computeDeathswProvince("Netherlands", fechas[1], fechas[length(fechas)])
-deathsAllUK <- computeDeathswProvince("United Kingdom", fechas[1], fechas[length(fechas)])
-
-fechas <- as.Date(days, format = "%m/%d/%y")
-
-#plot example
-#ptl <- plot_ly(as.data.frame(italy)) %>% add_lines(x=~date, y=~growth)%>%layout(xaxis=list(showticklabels=FALSE))
-setPlot <- function(country, startDate, endDate){
-    indexStart <- match(as.Date(startDate), fechas)
-    indexEnd <- match(as.Date(endDate), fechas)
-    tabla <- NULL
-    tabla$growth <- getGrowthALL(country, startDate, endDate)
-    tabla$date <- days[indexStart:indexEnd]
-    dates <- as.Date(tabla$date, format= "%m/%d/%y")
-    
-    p <- plot_ly(as.data.frame(tabla))%>%add_lines(x=dates, y=tabla$growth)%>% layout(title=paste(country, "coronavirus cases daily growth"), xaxis=list(showticklabels=TRUE))
-    return(p)
-}
 
 simplifyCountryNormal <- function(country, startDate, endDate){
     
@@ -193,25 +170,29 @@ setPlotDeaths <- function(country, startDate, endDate){
             tabla <- simplifyCountry(ukDin, startDate, endDate)
         }
         dates <- as.Date(tabla$date, format= "%m/%d/%y")
-        p <- plot_ly(as.data.frame(tabla))%>%add_lines(x=dates, y=~confirmed)%>% layout(title=paste(country, "coronavirus deaths"), xaxis=list(showticklabels=TRUE))
-        return(p)
+        hovertextd <- paste("Date: ", tabla$date, "<br>Confirmed deaths (absolute): ", tabla$confirmed)
+        
+        p <- plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=~confirmed, text= hovertextd, hoverinfo="text", line=list(color="green", shape="spline"))%>% layout(title=paste(country, "coronavirus deaths"), xaxis=list(showticklabels=TRUE))
+        p
     }
     else{
         tabla <- simplifyCountryNormal(country, startDate, endDate)
-        
+        hovertextd <- paste("Date: ", tabla$date, "<br>Confirmed deaths (absolute): ", tabla$deaths)        
         dates <- as.Date(tabla$date, format= "%m/%d/%y")
         
         
-        p <- plot_ly(as.data.frame(tabla))%>%add_lines(x=dates, y=tabla$deaths)%>% layout(title=paste(country, "coronavirus deaths"), xaxis=list(showticklabels=TRUE))
-        return(p)
+        p <- plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=tabla$deaths, text= hovertextd, hoverinfo="text", line=list(color="green", shape="spline"))%>% layout(title=paste(country, "coronavirus deaths"), xaxis=list(showticklabels=TRUE))
+        p
     }
 }
 
 setPlotDeathsGrowth <- function(country, startDate, endDate){
     tabla <- computeDeathGrowth(country, startDate, endDate)
     dates <- as.Date(tabla$date, format= "%m/%d/%y")
-    p <- plot_ly(as.data.frame(tabla))%>%add_lines(x=dates, y=tabla$dgrowth)%>% layout(title=paste(country, "coronavirus deaths daily % growth"), xaxis=list(showticklabels=TRUE))
-    return(p)
+    hovertextdgrowth <- paste("Date: ", tabla$date, "<br>Deaths growth: ", format(tabla$dgrowth, digits = 3), " % ")
+    
+    p <- plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=tabla$dgrowth, text= hovertextdgrowth, hoverinfo= "text", line=list(color="green", shape="spline"))%>% layout(title=paste(country, "coronavirus deaths daily % growth"), xaxis=list(showticklabels=TRUE))
+    p
     
 }
 
@@ -302,6 +283,9 @@ computeRateswProvince <- function(country, startDate, endDate){
         }
         if(country=="United Kingdom"){
             lista <- simplifyCountry(ukin, startDate, endDate)
+        }
+        if(country=="Netherlands"){
+            lista <- simplifyCountry(netherlandsin, startDate, endDate)
         }
         for(day in days){
             i <- match(day, days)
@@ -408,11 +392,43 @@ simplifyCountryCases <- function(country, startDate, endDate){
 setPlotConfirmed <- function(country, startDate, endDate){
     
     tabla <- simplifyCountryCases(country, startDate, endDate)
+    hovertextc <- paste("Date: ", tabla$date, "<br>Confirmed cases (absolute): ", tabla$confirmed)
     dates <- as.Date(tabla$date, format= "%m/%d/%y")
     
-    p <- plot_ly(as.data.frame(tabla))%>%add_lines(x=dates, y=tabla$confirmed)%>% layout(title=paste(country, "coronavirus confirmed cases"), xaxis=list(showticklabels=TRUE))
-    return(p)
+    p <- plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=tabla$confirmed, text= hovertextc, hoverinfo="text", line=list(color="green", shape="spline"))%>% layout(title=paste(country, "coronavirus confirmed cases"), xaxis=list(showticklabels=TRUE))
+    p
 }
+
+deathsAllFrance <- computeDeathswProvince("France", fechas[1], fechas[length(fechas)])
+deathsAllChina <- computeDeathswProvince("China", fechas[1], fechas[length(fechas)])
+deathsAllAustralia <- computeDeathswProvince("Australia", fechas[1], fechas[length(fechas)])
+deathsAllCanada <- computeDeathswProvince("Canada", fechas[1], fechas[length(fechas)])
+deathsAllNetherlands <- computeDeathswProvince("Netherlands", fechas[1], fechas[length(fechas)])
+deathsAllUK <- computeDeathswProvince("United Kingdom", fechas[1], fechas[length(fechas)])
+
+
+
+#No scientific notation
+options(scipen= 999)
+options(digits= 3)
+
+
+#plot example
+#ptl <- plot_ly(as.data.frame(italy)) %>% add_lines(x=~date, y=~growth)%>%layout(xaxis=list(showticklabels=FALSE))
+setPlot <- function(country, startDate, endDate){
+    indexStart <- match(as.Date(startDate), fechas)
+    indexEnd <- match(as.Date(endDate), fechas)
+    tabla <- NULL
+    tabla$growth <- getGrowthALL(country, startDate, endDate)
+    tabla$date <- days[indexStart:indexEnd]
+    dates <- as.Date(tabla$date, format= "%m/%d/%y")
+    
+    hovertextcgrowth <- paste("Date: ", tabla$date,"<br>Confirmed cases growth :", format(tabla$growth, nsmall = 3), " % ")        
+    p <- plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=tabla$growth, text=hovertextcgrowth, hoverinfo="text", line=list(color="green", shape="spline"))%>% layout(title=paste(country, "coronavirus cases daily growth"), xaxis=list(showticklabels=TRUE))
+    p
+}
+
+
 
 
 # User interface ----
@@ -453,26 +469,30 @@ ui <- fluidPage(
 # Server logic ----
 server <- function(input, output) {
     observeEvent(input$daterange, {
-    
-    observeEvent(input$var, {
-        if(input$var %in% withProvinces){
-            tabla <- computeRateswProvince(input$var, input$daterange[1], input$daterange[2])
-            dates <- as.Date(tabla$date, format= "%m/%d/%y")
-            output$confirmed <- renderPlotly({ plot_ly(as.data.frame(tabla))%>%add_lines(x=~date, y=~confirmed)%>% layout(title=paste(input$var, "coronavirus confirmed cases"), xaxis=list(showticklabels=FALSE))})
-            output$lineasPlot<- renderPlotly({ plot_ly(as.data.frame(tabla))%>%add_lines(x=~date, y=~rates)%>% layout(title=paste(input$var, "coronavirus cases daily growth"), xaxis=list(showticklabels=FALSE))        })
-            output$deathsPlot <- renderPlotly({setPlotDeaths(input$var, input$daterange[1], input$daterange[2])})
-            output$deathsGrowthPlot <- renderPlotly({setPlotDeathsGrowth(input$var, input$daterange[1], input$daterange[2])})
-            
+        
+        observeEvent(input$var, {
+            if(input$var %in% withProvinces){
+                tabla <- computeRateswProvince(input$var, input$daterange[1], input$daterange[2])
+                dates <- as.Date(tabla$date, format= "%m/%d/%y")
+                
+                hovertextc <- paste("Date: ", tabla$date, "<br>Confirmed cases (absolute): ", tabla$confirmed)
+                hovertextcgrowth <- paste("Date: ", tabla$date,"<br>Confirmed cases growth :", format(tabla$rates, digits = 3), " % ")
+                
+                output$confirmed <- renderPlotly({ plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=~confirmed, text= hovertextc, hoverinfo="text", line=list(color="green", shape="spline"))%>% layout(title=paste(input$var, "coronavirus confirmed cases"), xaxis=list(showticklabels=TRUE))})
+                output$lineasPlot<- renderPlotly({ plot_ly(as.data.frame(tabla), type = "scatter", mode="line", showlegend=FALSE)%>%config(displayModeBar=FALSE)%>%add_trace(x=dates, y=~rates, text= hovertextcgrowth, hoverinfo="text", line=list(color="green", shape="spline"))%>% layout(title=paste(input$var, "coronavirus cases daily growth"), xaxis=list(showticklabels=TRUE))})
+                output$deathsPlot <- renderPlotly({setPlotDeaths(input$var, input$daterange[1], input$daterange[2])})
+                output$deathsGrowthPlot <- renderPlotly({setPlotDeathsGrowth(input$var, input$daterange[1], input$daterange[2])})
+                
             }
-        else{
-            output$confirmed <- renderPlotly({setPlotConfirmed(input$var, input$daterange[1], input$daterange[2])})
-            output$lineasPlot <- renderPlotly({setPlot(input$var, input$daterange[1], input$daterange[2])})
-            output$deathsPlot <- renderPlotly({setPlotDeaths(input$var, input$daterange[1], input$daterange[2])})
-            output$deathsGrowthPlot <- renderPlotly({setPlotDeathsGrowth(input$var, input$daterange[1], input$daterange[2])})
+            else{
+                output$confirmed <- renderPlotly({setPlotConfirmed(input$var, input$daterange[1], input$daterange[2])})
+                output$lineasPlot <- renderPlotly({setPlot(input$var, input$daterange[1], input$daterange[2])})
+                output$deathsPlot <- renderPlotly({setPlotDeaths(input$var, input$daterange[1], input$daterange[2])})
+                output$deathsGrowthPlot <- renderPlotly({setPlotDeathsGrowth(input$var, input$daterange[1], input$daterange[2])})
+            }
         }
-    }
-    )
-})
+        )
+    })
 }
 # Run the application 
 shinyApp(ui = ui, server = server)
