@@ -6,6 +6,7 @@ library(plotly)
 library(dplyr)
 library(rlist)
 library(shinythemes)
+library(shinydashboard)
 source("functions.R", local = TRUE)
 source("plots.R", local = TRUE)
 source("simplify.R", local = TRUE)
@@ -99,8 +100,15 @@ ui <- fluidPage(
                           selectize = TRUE),
                           dateRangeInput("daterange",label = "Choose date range: " , start = fechas[1], min= fechas[1],end = fechas[length(fechas)], max= fechas[length(fechas)], startview= "month", separator=" to ", autoclose=TRUE),
               
-              h3("CORONAVIRUS DAILY CASES AS REPORTED BY COUNTRY"),plotlyOutput("daily"), h3("CORONAVIRUS CONFIRMED CASES, RECOVERED (CUMULATIVE) AND ACTIVE CASES*"), plotlyOutput("confirmed"),h5("* active = confirmed - recovered - deaths. No recovered data available for Netherlands, Sweden and the United Kingdom"),h3("CORONAVIRUS CASES DAILY % GROWTH"), plotlyOutput("lineasPlot"),h3("CORONAVIRUS DAILY DEATHS AS REPORTED BY COUNTRY"),plotlyOutput("dailyDeaths"),h3("CORONAVIRUS DEATHS (CUMULATIVE)"),plotlyOutput("deathsPlot"),h3("CORONAVIRUS DEATHS DAILY % GROWTH, COMPARED TO THE PREVIOUS DAY"),plotlyOutput("deathsGrowthPlot"),h6("Source: Johns Hopkins University - Tool: Enrique López Magallón - @EnriqueALopezM")
-    ))
+              fluidRow(column(width=9,
+            tabBox(width=900,
+              tabPanel("Daily cases reported", h3("CORONAVIRUS DAILY CASES AS REPORTED BY COUNTRY"),plotlyOutput("daily")),
+              tabPanel("Confirmed, recovered and active cases", h3("CORONAVIRUS CONFIRMED CASES, RECOVERED (CUMULATIVE) AND ACTIVE CASES*"), plotlyOutput("confirmed"),h5("* active = confirmed - recovered - deaths. No recovered data available for Netherlands, Sweden and the United Kingdom")),
+              tabPanel("Cases growth",h3("CORONAVIRUS CASES DAILY % GROWTH"), plotlyOutput("lineasPlot")),
+              tabPanel("Daily deaths", h3("CORONAVIRUS DAILY DEATHS AS REPORTED BY COUNTRY"),plotlyOutput("dailyDeaths")),
+              tabPanel("Deaths cumulative",h3("CORONAVIRUS DEATHS (CUMULATIVE)"),plotlyOutput("deathsPlot")),
+              tabPanel("Deaths daily growth",h3("CORONAVIRUS DEATHS DAILY % GROWTH, COMPARED TO THE PREVIOUS DAY"),plotlyOutput("deathsGrowthPlot")),h6("Source: Johns Hopkins University - Tool: Enrique López Magallón - @EnriqueALopezM")
+    )))))
 
 
 # Server logic ----
